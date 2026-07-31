@@ -67,11 +67,35 @@ export async function GET() {
       .from(schema.appMeta)
       .where(sql`${schema.appMeta.key} = 'last_health_check'`);
 
+    // Counts of reference content, so a deployment can prove the seed landed
+    // rather than only that the tables exist. Reference data only — no
+    // practice history is ever reported here.
+    const [content] = await db()
+      .select({
+        instruments: sql<number>`(select count(*) from instruments)`,
+        genres: sql<number>`(select count(*) from genres)`,
+        drillTypes: sql<number>`(select count(*) from drill_types)`,
+        theoryConcepts: sql<number>`(select count(*) from theory_concepts)`,
+        quizQuestions: sql<number>`(select count(*) from quiz_questions)`,
+        skillNodes: sql<number>`(select count(*) from skill_nodes)`,
+        epTracks: sql<number>`(select count(*) from ep_tracks)`,
+        roadmapQuarters: sql<number>`(select count(*) from roadmap_quarters)`,
+      })
+      .from(schema.appMeta)
+      .limit(1);
+
+    const [settingsRow] = await db()
+      .select({ timezone: schema.settings.timezone })
+      .from(schema.settings)
+      .limit(1);
+
     return NextResponse.json({
       ok: true,
       database: "connected",
       readWrite: "verified",
       env,
+      timezone: settingsRow?.timezone ?? null,
+      content,
       lastHealthCheck: row?.value ?? null,
     });
   } catch (error) {
