@@ -6,17 +6,22 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/components/ui";
 
 /**
- * Five items is about the ceiling for a thumb-reachable bottom bar. Stages 6-9
- * add more sections, so those will need a hub or an overflow rather than
- * another entry here.
+ * Four items, deliberately.
+ *
+ * A thumb-reachable bottom bar tops out around five, and the plan has more
+ * practice areas than that. They live behind /practice rather than being
+ * crammed in here or hidden in a "more" menu, which keeps this bar stable as
+ * the remaining stages land.
  */
 const LINKS = [
   { href: "/", label: "Today" },
-  { href: "/skills", label: "Skills" },
-  { href: "/drills", label: "Drills" },
+  { href: "/practice", label: "Practice" },
   { href: "/sessions", label: "History" },
   { href: "/log", label: "Log", primary: true },
 ];
+
+/** Sections that live under the Practice tab, so it highlights on them too. */
+const PRACTICE_PATHS = ["/practice", "/skills", "/drills", "/theory"];
 
 /**
  * Bottom bar on mobile, top bar from `sm` up.
@@ -43,7 +48,11 @@ export function Nav() {
         <div className="flex flex-1 items-center justify-around gap-2 sm:flex-none sm:justify-end">
           {LINKS.map((link) => {
             const active =
-              link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+              link.href === "/"
+                ? pathname === "/"
+                : link.href === "/practice"
+                  ? PRACTICE_PATHS.some((path) => pathname.startsWith(path))
+                  : pathname.startsWith(link.href);
             return (
               <Link
                 key={link.href}

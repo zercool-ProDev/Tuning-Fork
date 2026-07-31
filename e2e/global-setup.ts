@@ -42,6 +42,8 @@ export default async function globalSetup() {
     await pool.query("delete from fluency_ratings");
     await pool.query("delete from production_projects");
     await pool.query("delete from drill_attempts");
+    await pool.query("delete from quiz_attempts");
+    await pool.query("delete from srs_items");
     await pool.query(
       "update skill_progress set status = 'not_started', achieved_on = null, session_id = null",
     );

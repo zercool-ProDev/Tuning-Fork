@@ -148,7 +148,8 @@ in the proxy layer.
 ```
 src/
   app/
-    (app)/             signed-in shell: dashboard, skills, drills, log, sessions
+    (app)/             signed-in shell: dashboard, practice hub, skills,
+                       drills, theory, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
@@ -165,6 +166,7 @@ src/
     fluency.tsx        self-rated fluency over time
     drill-form.tsx     log a drill run
     accuracy-trend.tsx accuracy over time, by difficulty
+    quiz-card.tsx      one question, graded server-side
   db/
     index.ts           Drizzle client, driver chosen from the URL
     queries.ts         read helpers and aggregates
@@ -173,6 +175,7 @@ src/
     dates.ts           timezone-aware day maths
     streaks.ts         streak, consistency and heatmap grid maths
     accuracy.ts        drill accuracy and trend maths
+    srs.ts             SM-2 scheduling, per concept
     domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
@@ -203,9 +206,13 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1-5 are done: schema and seed content; the design system, session logger,
+Stages 1-6 are done: schema and seed content; the design system, session logger,
 journal and session list; the dashboard; the skill-tree engine covering the four
-instruments and Logic Pro; and drill logging with accuracy trends for ear
-training and sight reading.
+instruments and Logic Pro; drill logging with accuracy trends; and the theory
+curriculum with quizzes and a spaced-repetition queue.
 
-Stage 6 is the theory curriculum, quizzes and the spaced-repetition queue.
+Stage 7 is the EP command centre - five singles moving through a stage pipeline.
+
+Navigation is four items: Today, Practice, History and Log. Practice is a hub
+for every training area, because a thumb-reachable bottom bar tops out around
+five and the remaining stages add more areas than that.

@@ -391,3 +391,132 @@ export async function getRecentDrillAttempts(limit = 8) {
     .orderBy(desc(schema.drillAttempts.occurredOn), desc(schema.drillAttempts.id))
     .limit(limit);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Theory: curriculum, quizzes and spaced repetition                          */
+/* -------------------------------------------------------------------------- */
+
+export type TheoryConcept = typeof schema.theoryConcepts.$inferSelect;
+export type SrsItem = typeof schema.srsItems.$inferSelect;
+
+export type ConceptWithSrs = TheoryConcept & {
+  easeFactor: number | null;
+  intervalDays: number | null;
+  repetitions: number | null;
+  lapses: number;
+  dueOn: string | null;
+  lastReviewedAt: Date | null;
+  questionCount: number;
+};
+
+/**
+ * The whole curriculum with each concept's schedule state.
+ *
+ * Left join on srs_items: a concept never studied has no row yet, and should
+ * appear as new rather than disappear from the curriculum.
+ */
+export async function getCurriculum(): Promise<ConceptWithSrs[]> {
+  const rows = await db()
+    .select({
+      concept: schema.theoryConcepts,
+      easeFactor: schema.srsItems.easeFactor,
+      intervalDays: schema.srsItems.intervalDays,
+      repetitions: schema.srsItems.repetitions,
+      lapses: schema.srsItems.lapses,
+      dueOn: schema.srsItems.dueOn,
+      lastReviewedAt: schema.srsItems.lastReviewedAt,
+      questionCount: sql<number>`(
+        select count(*)::int from quiz_questions q
+        where q.concept_id = ${schema.theoryConcepts.id}
+      )`,
+    })
+    .from(schema.theoryConcepts)
+    .leftJoin(schema.srsItems, eq(schema.srsItems.conceptId, schema.theoryConcepts.id))
+    .orderBy(asc(schema.theoryConcepts.orderIndex));
+
+  return rows.map((row) => ({
+    ...row.concept,
+    easeFactor: row.easeFactor === null ? null : Number(row.easeFactor),
+    intervalDays: row.intervalDays,
+    repetitions: row.repetitions,
+    lapses: row.lapses ?? 0,
+    dueOn: row.dueOn,
+    lastReviewedAt: row.lastReviewedAt,
+    questionCount: row.questionCount,
+  }));
+}
+
+export async function getConceptBySlug(slug: string) {
+  const [row] = await db()
+    .select()
+    .from(schema.theoryConcepts)
+    .where(eq(schema.theoryConcepts.slug, slug))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function getPrerequisites(conceptId: number) {
+  return db()
+    .select({ id: schema.theoryConcepts.id, title: schema.theoryConcepts.title, slug: schema.theoryConcepts.slug })
+    .from(schema.theoryPrerequisites)
+    .innerJoin(
+      schema.theoryConcepts,
+      eq(schema.theoryConcepts.id, schema.theoryPrerequisites.requiresConceptId),
+    )
+    .where(eq(schema.theoryPrerequisites.conceptId, conceptId));
+}
+
+export async function getQuestionsForConcept(conceptId: number) {
+  return db()
+    .select()
+    .from(schema.quizQuestions)
+    .where(eq(schema.quizQuestions.conceptId, conceptId))
+    .orderBy(asc(schema.quizQuestions.id));
+}
+
+/**
+ * Pick a question for a review, preferring ones answered least recently.
+ *
+ * Per-concept scheduling only pays off if the question varies; always serving
+ * the lowest id would recreate the per-question memorisation the design was
+ * meant to avoid.
+ */
+export async function pickQuestionForConcept(conceptId: number) {
+  const [row] = await db()
+    .select({
+      question: schema.quizQuestions,
+      lastAnswered: sql<string | null>`(
+        select max(a.answered_at)::text from quiz_attempts a
+        where a.question_id = ${schema.quizQuestions.id}
+      )`,
+    })
+    .from(schema.quizQuestions)
+    .where(eq(schema.quizQuestions.conceptId, conceptId))
+    .orderBy(sql`(
+      select max(a.answered_at) from quiz_attempts a
+      where a.question_id = ${schema.quizQuestions.id}
+    ) asc nulls first`, sql`random()`)
+    .limit(1);
+
+  return row?.question ?? null;
+}
+
+/** Concepts due for review today or earlier, plus never-studied ones. */
+export async function getReviewQueue(today: string): Promise<ConceptWithSrs[]> {
+  const curriculum = await getCurriculum();
+  return curriculum.filter(
+    (concept) =>
+      concept.questionCount > 0 &&
+      (concept.dueOn === null || concept.dueOn <= today),
+  );
+}
+
+export async function getQuizStats() {
+  const [row] = await db()
+    .select({
+      attempts: sql<number>`count(*)::int`,
+      correct: sql<number>`count(*) filter (where ${schema.quizAttempts.isCorrect})::int`,
+    })
+    .from(schema.quizAttempts);
+  return row ?? { attempts: 0, correct: 0 };
+}

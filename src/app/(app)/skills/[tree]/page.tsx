@@ -100,7 +100,7 @@ function Header({ title, minutes }: { title: string; minutes: number }) {
         ) : null}
       </div>
       <Link href="/skills" className="text-sm text-ink-muted underline-offset-4 hover:underline">
-        All skills
+        All instruments
       </Link>
     </header>
   );
