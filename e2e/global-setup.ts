@@ -44,6 +44,13 @@ export default async function globalSetup() {
     await pool.query("delete from drill_attempts");
     await pool.query("delete from quiz_attempts");
     await pool.query("delete from srs_items");
+    // Reset the EP to its seeded shape: five singles, all at idea, no history.
+    await pool.query("delete from ep_track_stage_events");
+    await pool.query("delete from ep_tracks where position > 5");
+    await pool.query(
+      "update ep_tracks set stage = 'idea', stage_updated_at = now(), target_date = null, notes = null, title = 'Track ' || position",
+    );
+    await pool.query("update ep_releases set target_date = null, notes = null, title = 'Debut EP'");
     await pool.query(
       "update skill_progress set status = 'not_started', achieved_on = null, session_id = null",
     );

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import {
   getCurriculum,
+  getRelease,
+  getTracksWithContext,
   getDrillSummary,
   getDrillTypes,
   getInstruments,
@@ -11,6 +13,7 @@ import {
   getTreeProgressSummary,
 } from "@/db/queries";
 import { accuracy } from "@/lib/accuracy";
+import { releaseProgress, stageAge, type EpStage } from "@/lib/ep";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +67,7 @@ function AreaCard({
 }
 
 export default async function PracticePage() {
-  const [today, instruments, trees, fluency, drillTypes, drills, curriculum] =
+  const [today, instruments, trees, fluency, drillTypes, drills, curriculum, release] =
     await Promise.all([
       getToday(),
       getInstruments(),
@@ -73,7 +76,15 @@ export default async function PracticePage() {
       getDrillTypes(),
       getDrillSummary(),
       getCurriculum(),
+      getRelease(),
     ]);
+
+  const epTracks = release ? await getTracksWithContext(release.id) : [];
+  const epStages = epTracks.map((track) => track.stage as EpStage);
+  const epProgress = releaseProgress(epStages);
+  const epStalling = epTracks.filter((track) =>
+    stageAge(track.stage as EpStage, track.stageUpdatedAt.toISOString().slice(0, 10), today).stale,
+  ).length;
 
   const instrumentTrees = trees.filter((row) => row.treeKind === "instrument");
   const skillsDone = instrumentTrees.reduce((sum, row) => sum + row.done, 0);
@@ -131,6 +142,19 @@ export default async function PracticePage() {
             drillTotals.attempts > 0
               ? `${drillTotals.attempts} attempts across ${drillsStarted}/${drillTypes.length} drills`
               : `${drillTypes.length} drills, none logged yet`
+          }
+        />
+
+        <AreaCard
+          href="/ep"
+          name="EP"
+          stat={epStalling > 0 ? `${epStalling} stalling` : `${epProgress}%`}
+          urgent={epStalling > 0}
+          pct={epProgress}
+          detail={
+            epTracks.length > 0
+              ? `${epTracks.length} singles · ${epStages.filter((s) => s === "released").length} released`
+              : "No tracks yet"
           }
         />
 

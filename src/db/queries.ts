@@ -520,3 +520,85 @@ export async function getQuizStats() {
     .from(schema.quizAttempts);
   return row ?? { attempts: 0, correct: 0 };
 }
+
+/* -------------------------------------------------------------------------- */
+/* EP command centre                                                          */
+/* -------------------------------------------------------------------------- */
+
+export type EpRelease = typeof schema.epReleases.$inferSelect;
+export type EpTrack = typeof schema.epTracks.$inferSelect;
+
+export async function getRelease() {
+  const [row] = await db().select().from(schema.epReleases).orderBy(asc(schema.epReleases.id)).limit(1);
+  return row ?? null;
+}
+
+/**
+ * Tracks with everything the pipeline needs: how long they have sat where they
+ * are, minutes logged against them, and any linked production projects.
+ */
+export async function getTracksWithContext(releaseId: number) {
+  const tracks = await db()
+    .select()
+    .from(schema.epTracks)
+    .where(eq(schema.epTracks.releaseId, releaseId))
+    .orderBy(asc(schema.epTracks.position));
+
+  if (tracks.length === 0) return [];
+
+  const ids = tracks.map((track) => track.id);
+
+  const [minutes, projects, events] = await Promise.all([
+    db()
+      .select({
+        epTrackId: schema.sessionSegments.epTrackId,
+        minutes: sql<number>`coalesce(sum(${schema.sessionSegments.minutes}), 0)::int`,
+      })
+      .from(schema.sessionSegments)
+      .where(sql`${schema.sessionSegments.epTrackId} in ${ids}`)
+      .groupBy(schema.sessionSegments.epTrackId),
+    db()
+      .select({
+        id: schema.productionProjects.id,
+        name: schema.productionProjects.name,
+        epTrackId: schema.productionProjects.epTrackId,
+        status: schema.productionProjects.status,
+      })
+      .from(schema.productionProjects)
+      .where(sql`${schema.productionProjects.epTrackId} in ${ids}`),
+    db()
+      .select()
+      .from(schema.epTrackStageEvents)
+      .where(sql`${schema.epTrackStageEvents.trackId} in ${ids}`)
+      .orderBy(asc(schema.epTrackStageEvents.changedAt)),
+  ]);
+
+  const minutesByTrack = new Map(
+    minutes.filter((row) => row.epTrackId !== null).map((row) => [row.epTrackId!, row.minutes]),
+  );
+
+  const projectsByTrack = new Map<number, typeof projects>();
+  for (const project of projects) {
+    if (project.epTrackId === null) continue;
+    const list = projectsByTrack.get(project.epTrackId) ?? [];
+    list.push(project);
+    projectsByTrack.set(project.epTrackId, list);
+  }
+
+  const eventsByTrack = new Map<number, { toStage: string; changedOn: string }[]>();
+  for (const event of events) {
+    const list = eventsByTrack.get(event.trackId) ?? [];
+    list.push({
+      toStage: event.toStage,
+      changedOn: event.changedAt.toISOString().slice(0, 10),
+    });
+    eventsByTrack.set(event.trackId, list);
+  }
+
+  return tracks.map((track) => ({
+    ...track,
+    minutes: minutesByTrack.get(track.id) ?? 0,
+    projects: projectsByTrack.get(track.id) ?? [],
+    events: eventsByTrack.get(track.id) ?? [],
+  }));
+}

@@ -149,7 +149,7 @@ in the proxy layer.
 src/
   app/
     (app)/             signed-in shell: dashboard, practice hub, skills,
-                       drills, theory, log, sessions
+                       drills, theory, ep, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
@@ -167,6 +167,7 @@ src/
     drill-form.tsx     log a drill run
     accuracy-trend.tsx accuracy over time, by difficulty
     quiz-card.tsx      one question, graded server-side
+    ep-track.tsx       one single, with its stage rail
   db/
     index.ts           Drizzle client, driver chosen from the URL
     queries.ts         read helpers and aggregates
@@ -176,6 +177,7 @@ src/
     streaks.ts         streak, consistency and heatmap grid maths
     accuracy.ts        drill accuracy and trend maths
     srs.ts             SM-2 scheduling, per concept
+    ep.ts              pipeline stages, staleness and time-in-stage
     domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
@@ -206,12 +208,14 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1-6 are done: schema and seed content; the design system, session logger,
+Stages 1-7 are done: schema and seed content; the design system, session logger,
 journal and session list; the dashboard; the skill-tree engine covering the four
-instruments and Logic Pro; drill logging with accuracy trends; and the theory
-curriculum with quizzes and a spaced-repetition queue.
+instruments and Logic Pro; drill logging with accuracy trends; the theory
+curriculum with quizzes and a spaced-repetition queue; and the EP command
+centre.
 
-Stage 7 is the EP command centre - five singles moving through a stage pipeline.
+Stage 8 is the genre versatility map - proficiency grid, deep dive of the
+month, and a listening journal.
 
 Navigation is four items: Today, Practice, History and Log. Practice is a hub
 for every training area, because a thumb-reachable bottom bar tops out around

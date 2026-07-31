@@ -21,7 +21,7 @@ const LINKS = [
 ];
 
 /** Sections that live under the Practice tab, so it highlights on them too. */
-const PRACTICE_PATHS = ["/practice", "/skills", "/drills", "/theory"];
+const PRACTICE_PATHS = ["/practice", "/skills", "/drills", "/theory", "/ep"];
 
 /**
  * Bottom bar on mobile, top bar from `sm` up.
