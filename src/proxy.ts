@@ -7,7 +7,13 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
  * flow itself. Denying by default means a new route is protected the moment it
  * is created, rather than the moment someone remembers to guard it.
  */
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+/**
+ * `/api/health` is public on purpose: it reports only whether the database is
+ * reachable, never any of your data, and it is the one endpoint worth being
+ * able to check without first being able to log in. Diagnostic detail in its
+ * response is still gated on the session — see the route.
+ */
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/health"];
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
