@@ -149,7 +149,7 @@ in the proxy layer.
 src/
   app/
     (app)/             signed-in shell: dashboard, practice hub, skills,
-                       drills, theory, ep, log, sessions
+                       drills, theory, ep, genres, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
@@ -168,6 +168,7 @@ src/
     accuracy-trend.tsx accuracy over time, by difficulty
     quiz-card.tsx      one question, graded server-side
     ep-track.tsx       one single, with its stage rail
+    genre-row.tsx      one genre, rating and the evidence behind it
   db/
     index.ts           Drizzle client, driver chosen from the URL
     queries.ts         read helpers and aggregates
@@ -178,6 +179,7 @@ src/
     accuracy.ts        drill accuracy and trend maths
     srs.ts             SM-2 scheduling, per concept
     ep.ts              pipeline stages, staleness and time-in-stage
+    genres.ts          coverage, focus suggestions and evidence
     domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
@@ -211,11 +213,11 @@ running against a local Postgres possible.
 Stages 1-7 are done: schema and seed content; the design system, session logger,
 journal and session list; the dashboard; the skill-tree engine covering the four
 instruments and Logic Pro; drill logging with accuracy trends; the theory
-curriculum with quizzes and a spaced-repetition queue; and the EP command
-centre.
+curriculum with quizzes and a spaced-repetition queue; the EP command centre;
+and the genre versatility map.
 
-Stage 8 is the genre versatility map - proficiency grid, deep dive of the
-month, and a listening journal.
+Stage 9 is the practice planner and yearly roadmap, which completes the
+dashboard's overall progress metric.
 
 Navigation is four items: Today, Practice, History and Log. Practice is a hub
 for every training area, because a thumb-reachable bottom bar tops out around

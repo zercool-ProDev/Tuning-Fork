@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import {
   getCurriculum,
+  getGenresWithContext,
   getRelease,
   getTracksWithContext,
   getDrillSummary,
@@ -14,6 +15,7 @@ import {
 } from "@/db/queries";
 import { accuracy } from "@/lib/accuracy";
 import { releaseProgress, stageAge, type EpStage } from "@/lib/ep";
+import { coverage } from "@/lib/genres";
 
 export const dynamic = "force-dynamic";
 
@@ -67,7 +69,7 @@ function AreaCard({
 }
 
 export default async function PracticePage() {
-  const [today, instruments, trees, fluency, drillTypes, drills, curriculum, release] =
+  const [today, instruments, trees, fluency, drillTypes, drills, curriculum, release, genres] =
     await Promise.all([
       getToday(),
       getInstruments(),
@@ -77,6 +79,7 @@ export default async function PracticePage() {
       getDrillSummary(),
       getCurriculum(),
       getRelease(),
+      getGenresWithContext(),
     ]);
 
   const epTracks = release ? await getTracksWithContext(release.id) : [];
@@ -85,6 +88,15 @@ export default async function PracticePage() {
   const epStalling = epTracks.filter((track) =>
     stageAge(track.stage as EpStage, track.stageUpdatedAt.toISOString().slice(0, 10), today).stale,
   ).length;
+
+  const genreStats = coverage(
+    genres.map((genre) => ({
+      genreId: genre.id,
+      rating: genre.rating,
+      songs: genre.songs,
+      minutes: genre.minutes,
+    })),
+  );
 
   const instrumentTrees = trees.filter((row) => row.treeKind === "instrument");
   const skillsDone = instrumentTrees.reduce((sum, row) => sum + row.done, 0);
@@ -143,6 +155,14 @@ export default async function PracticePage() {
               ? `${drillTotals.attempts} attempts across ${drillsStarted}/${drillTypes.length} drills`
               : `${drillTypes.length} drills, none logged yet`
           }
+        />
+
+        <AreaCard
+          href="/genres"
+          name="Genres"
+          stat={`${genreStats.covered}/${genreStats.total}`}
+          pct={genreStats.pct}
+          detail={`${genreStats.pct}% covered · ${genreStats.rated} rated`}
         />
 
         <AreaCard

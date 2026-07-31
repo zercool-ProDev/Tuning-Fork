@@ -51,3 +51,12 @@ export async function resetEp() {
     );
   });
 }
+
+/** Clear genre ratings, deep dives and listening notes. */
+export async function resetGenres() {
+  await withPool(async (pool) => {
+    await pool.query("delete from genre_ratings");
+    await pool.query("delete from genre_deep_dives");
+    await pool.query("delete from listening_notes");
+  });
+}

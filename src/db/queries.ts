@@ -602,3 +602,111 @@ export async function getTracksWithContext(releaseId: number) {
     events: eventsByTrack.get(track.id) ?? [],
   }));
 }
+
+/* -------------------------------------------------------------------------- */
+/* Genre versatility map                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type GenreWithContext = typeof schema.genres.$inferSelect & {
+  rating: number | null;
+  ratedOn: string | null;
+  history: { rating: number; ratedOn: string }[];
+  songs: number;
+  minutes: number;
+  notes: number;
+};
+
+/**
+ * Every genre with its latest self-rating and the evidence behind it.
+ *
+ * Repertoire and logged minutes come along because a rating with nothing
+ * behind it is a claim, not a fact — and the repertoire link already exists
+ * from the instrument stage, so nothing has to be entered twice.
+ */
+export async function getGenresWithContext(): Promise<GenreWithContext[]> {
+  const [genreRows, ratings, songs, minutes, notes] = await Promise.all([
+    db().select().from(schema.genres).orderBy(asc(schema.genres.sortOrder)),
+    db()
+      .select()
+      .from(schema.genreRatings)
+      .orderBy(asc(schema.genreRatings.ratedOn), asc(schema.genreRatings.id)),
+    db()
+      .select({
+        genreId: schema.repertoire.genreId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.repertoire)
+      .where(sql`${schema.repertoire.genreId} is not null`)
+      .groupBy(schema.repertoire.genreId),
+    db()
+      .select({
+        genreId: schema.sessionSegments.genreId,
+        minutes: sql<number>`coalesce(sum(${schema.sessionSegments.minutes}), 0)::int`,
+      })
+      .from(schema.sessionSegments)
+      .where(sql`${schema.sessionSegments.genreId} is not null`)
+      .groupBy(schema.sessionSegments.genreId),
+    db()
+      .select({
+        genreId: schema.listeningNotes.genreId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(schema.listeningNotes)
+      .where(sql`${schema.listeningNotes.genreId} is not null`)
+      .groupBy(schema.listeningNotes.genreId),
+  ]);
+
+  const historyByGenre = new Map<number, { rating: number; ratedOn: string }[]>();
+  for (const row of ratings) {
+    const list = historyByGenre.get(row.genreId) ?? [];
+    list.push({ rating: row.rating, ratedOn: row.ratedOn });
+    historyByGenre.set(row.genreId, list);
+  }
+
+  const songsByGenre = new Map(
+    songs.filter((row) => row.genreId !== null).map((row) => [row.genreId!, row.count]),
+  );
+  const minutesByGenre = new Map(
+    minutes.filter((row) => row.genreId !== null).map((row) => [row.genreId!, row.minutes]),
+  );
+  const notesByGenre = new Map(
+    notes.filter((row) => row.genreId !== null).map((row) => [row.genreId!, row.count]),
+  );
+
+  return genreRows.map((genre) => {
+    const history = historyByGenre.get(genre.id) ?? [];
+    const latest = history.at(-1) ?? null;
+    return {
+      ...genre,
+      rating: latest?.rating ?? null,
+      ratedOn: latest?.ratedOn ?? null,
+      history,
+      songs: songsByGenre.get(genre.id) ?? 0,
+      minutes: minutesByGenre.get(genre.id) ?? 0,
+      notes: notesByGenre.get(genre.id) ?? 0,
+    };
+  });
+}
+
+export async function getDeepDives() {
+  return db()
+    .select({
+      dive: schema.genreDeepDives,
+      genreName: schema.genres.name,
+    })
+    .from(schema.genreDeepDives)
+    .innerJoin(schema.genres, eq(schema.genres.id, schema.genreDeepDives.genreId))
+    .orderBy(desc(schema.genreDeepDives.month));
+}
+
+export async function getListeningNotes(limit = 30) {
+  return db()
+    .select({
+      note: schema.listeningNotes,
+      genreName: schema.genres.name,
+    })
+    .from(schema.listeningNotes)
+    .leftJoin(schema.genres, eq(schema.genres.id, schema.listeningNotes.genreId))
+    .orderBy(desc(schema.listeningNotes.listenedOn), desc(schema.listeningNotes.id))
+    .limit(limit);
+}
