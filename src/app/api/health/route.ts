@@ -8,6 +8,17 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Strip anything credential-shaped out of a driver error before showing it to
+ * an unauthenticated caller. Connection errors frequently echo the connection
+ * string back, which would otherwise leak the database password.
+ */
+function redact(message: string): string {
+  return message
+    .replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, "postgres://[redacted]")
+    .replace(/password=[^\s&"']+/gi, "password=[redacted]");
+}
+
 /** Which required environment variables are present. Never their values. */
 function envStatus() {
   return {
@@ -76,7 +87,10 @@ export async function GET() {
         database: migrationsPending ? "connected" : "unreachable",
         migrations: migrationsPending ? "pending" : undefined,
         env,
-        error: authenticated ? message : undefined,
+        // Redacted for anyone, full detail once signed in. A health check that
+        // cannot explain its own failure until you are already logged in is
+        // useless precisely when it matters most.
+        error: authenticated ? message : redact(message),
       },
       { status: 503 },
     );
