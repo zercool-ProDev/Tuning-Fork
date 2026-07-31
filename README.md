@@ -148,13 +148,15 @@ in the proxy layer.
 ```
 src/
   app/
-    (app)/             signed-in shell: today, log, sessions
+    (app)/             signed-in shell: dashboard, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
     login/             passcode form
   components/
     ui.tsx             buttons, fields, cards, domain tag
+    heatmap.tsx        contribution grid, scrolled to the recent weeks
+    week-bars.tsx      last seven days
     nav.tsx            bottom bar on mobile, top bar on desktop
     session-form.tsx   the logger, shared by new and edit
     session-card.tsx   one sitting, with its domain split
@@ -164,6 +166,7 @@ src/
     schema.ts          table definitions
   lib/
     dates.ts           timezone-aware day maths
+    streaks.ts         streak, consistency and heatmap grid maths
     domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
@@ -194,6 +197,9 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1 and 2 are done: schema and seed content, then the design system,
-session logger, journal and session list. Stage 3 is the dashboard proper —
-heatmap, richer streaks and this week's focus.
+Stages 1-3 are done: schema and seed content; the design system, session logger,
+journal and session list; and the dashboard - streaks, week shape, contribution
+heatmap and domain split.
+
+Stage 4 is the skill-tree engine, serving the four instrument trees and the
+Logic Pro tree from one component.
