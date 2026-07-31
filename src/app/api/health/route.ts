@@ -75,7 +75,16 @@ export async function GET() {
       lastHealthCheck: row?.value ?? null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // Drizzle wraps driver errors in a DrizzleQueryError whose own message is
+    // just the failed SQL. The useful part ("relation does not exist",
+    // authentication failures, DNS errors) is down the cause chain, so walk it.
+    const chain: string[] = [];
+    let current: unknown = error;
+    while (current instanceof Error) {
+      chain.push(current.message);
+      current = current.cause;
+    }
+    const message = chain.length > 0 ? chain.join(" | ") : String(error);
 
     // Missing tables is a distinct, expected state before migrations are run,
     // and worth naming rather than reporting as a generic failure.
