@@ -83,7 +83,43 @@ npm run dev
 | `npm run hash-passcode` | Generate `PASSCODE_HASH` and `AUTH_SECRET`     |
 | `npm run db:generate`   | Generate a migration from schema changes       |
 | `npm run db:migrate`    | Apply pending migrations                       |
+| `npm run db:seed`       | Load/refresh reference content (idempotent)    |
 | `npm run db:studio`     | Browse the database                            |
+
+## Data model
+
+Practice history is **one append-only timeline**, not six per-section logs:
+
+- `practice_sessions` — one row per sitting
+- `session_segments` — the unified log. Each carries a `domain`, its minutes,
+  and optional foreign keys naming the instrument, genre, EP track, skill node
+  or production project it was about. Those nullable FKs are what stop the
+  domains becoming silos.
+
+Streaks, the heatmap, time-per-domain and "this week's focus" are all a single
+`GROUP BY` over `session_segments`. There is no heatmap table.
+
+Everything else is **current state** that hangs off that timeline — skill tree
+progress, repertoire, genre ratings, EP tracks, the SRS queue, roadmap
+milestones. State rows reference the session that moved them, so the heatmap and
+the skill tree cannot drift apart.
+
+Two deliberate choices worth knowing:
+
+- **SRS is scheduled per concept, not per question.** A review pulls a fresh
+  question from a weak concept rather than re-showing one whose shape you have
+  memorised. Moving to per-question later is an additive migration.
+- **`ep_track_stage_events` records every stage transition.** Current stage
+  alone cannot tell you where you stall; the history is what says "tracking took
+  three weeks, mixing has been sitting for five".
+
+### Seed content
+
+`npm run db:seed` loads 4 instruments, 12 genres, 9 drill types, a 19-concept
+theory curriculum with prerequisites, 22 starter quiz questions, 44 skill-tree
+nodes (four instrument trees plus Logic Pro), an EP shell with 5 tracks, and 4
+roadmap quarters. It is idempotent and conflicts on natural keys, so it never
+clobbers edits made in the app and can be re-run as new seed content lands.
 
 ## How auth works
 
