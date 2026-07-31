@@ -38,6 +38,12 @@ export default async function globalSetup() {
   try {
     // Segments and journal entries cascade from practice_sessions.
     await pool.query("delete from practice_sessions");
+    await pool.query("delete from repertoire");
+    await pool.query("delete from fluency_ratings");
+    await pool.query("delete from production_projects");
+    await pool.query(
+      "update skill_progress set status = 'not_started', achieved_on = null, session_id = null",
+    );
     await pool.query(
       "update settings set current_focus = null, weekly_minutes_target = 420 where id = 1",
     );

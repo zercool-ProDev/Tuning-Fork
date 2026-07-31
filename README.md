@@ -148,7 +148,7 @@ in the proxy layer.
 ```
 src/
   app/
-    (app)/             signed-in shell: dashboard, log, sessions
+    (app)/             signed-in shell: dashboard, skills, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
@@ -160,6 +160,9 @@ src/
     nav.tsx            bottom bar on mobile, top bar on desktop
     session-form.tsx   the logger, shared by new and edit
     session-card.tsx   one sitting, with its domain split
+    skill-tree.tsx     shared by all five trees
+    repertoire.tsx     songs learned, per instrument
+    fluency.tsx        self-rated fluency over time
   db/
     index.ts           Drizzle client, driver chosen from the URL
     queries.ts         read helpers and aggregates
@@ -197,9 +200,8 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1-3 are done: schema and seed content; the design system, session logger,
-journal and session list; and the dashboard - streaks, week shape, contribution
-heatmap and domain split.
+Stages 1-4 are done: schema and seed content; the design system, session logger,
+journal and session list; the dashboard; and the skill-tree engine covering the
+four instruments and Logic Pro.
 
-Stage 4 is the skill-tree engine, serving the four instrument trees and the
-Logic Pro tree from one component.
+Stage 5 is ear training and sight reading - drill logging and accuracy trends.

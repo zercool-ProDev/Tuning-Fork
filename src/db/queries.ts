@@ -182,3 +182,141 @@ export async function getPracticeDays(fromDate: string): Promise<string[]> {
     .orderBy(desc(schema.practiceSessions.occurredOn));
   return rows.map((row) => row.day);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Skill trees, repertoire, fluency and production projects                   */
+/* -------------------------------------------------------------------------- */
+
+export type SkillNodeWithProgress = typeof schema.skillNodes.$inferSelect & {
+  status: (typeof schema.skillStatusEnum.enumValues)[number];
+  achievedOn: string | null;
+  progressNotes: string | null;
+};
+
+export async function getInstrumentByKey(key: string) {
+  const [row] = await db()
+    .select()
+    .from(schema.instruments)
+    .where(eq(schema.instruments.key, key))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * A whole tree with each node's current status.
+ *
+ * Left join rather than inner: a node seeded after the initial progress rows
+ * were created would otherwise vanish from the tree entirely, which is a much
+ * worse failure than showing it as not started.
+ */
+export async function getSkillTree(
+  treeKind: "instrument" | "logic",
+  instrumentId: number | null,
+): Promise<SkillNodeWithProgress[]> {
+  const rows = await db()
+    .select({
+      node: schema.skillNodes,
+      status: schema.skillProgress.status,
+      achievedOn: schema.skillProgress.achievedOn,
+      notes: schema.skillProgress.notes,
+    })
+    .from(schema.skillNodes)
+    .leftJoin(
+      schema.skillProgress,
+      eq(schema.skillProgress.skillNodeId, schema.skillNodes.id),
+    )
+    .where(
+      instrumentId === null
+        ? eq(schema.skillNodes.treeKind, treeKind)
+        : and(
+            eq(schema.skillNodes.treeKind, treeKind),
+            eq(schema.skillNodes.instrumentId, instrumentId),
+          ),
+    )
+    .orderBy(asc(schema.skillNodes.tier), asc(schema.skillNodes.sortOrder));
+
+  return rows.map((row) => ({
+    ...row.node,
+    status: row.status ?? "not_started",
+    achievedOn: row.achievedOn,
+    progressNotes: row.notes,
+  }));
+}
+
+/** Done-node counts for every tree at once, for the hub page. */
+export async function getTreeProgressSummary() {
+  return db()
+    .select({
+      treeKind: schema.skillNodes.treeKind,
+      instrumentId: schema.skillNodes.instrumentId,
+      total: sql<number>`count(*)::int`,
+      done: sql<number>`count(*) filter (where ${schema.skillProgress.status} = 'done')::int`,
+      inProgress: sql<number>`count(*) filter (where ${schema.skillProgress.status} = 'in_progress')::int`,
+    })
+    .from(schema.skillNodes)
+    .leftJoin(
+      schema.skillProgress,
+      eq(schema.skillProgress.skillNodeId, schema.skillNodes.id),
+    )
+    .groupBy(schema.skillNodes.treeKind, schema.skillNodes.instrumentId);
+}
+
+export async function getRepertoire(instrumentId: number) {
+  return db()
+    .select()
+    .from(schema.repertoire)
+    .where(eq(schema.repertoire.instrumentId, instrumentId))
+    .orderBy(desc(schema.repertoire.id));
+}
+
+/** Ratings oldest first, so a trend line reads left to right. */
+export async function getFluencyRatings(instrumentId: number) {
+  return db()
+    .select()
+    .from(schema.fluencyRatings)
+    .where(eq(schema.fluencyRatings.instrumentId, instrumentId))
+    .orderBy(asc(schema.fluencyRatings.ratedOn), asc(schema.fluencyRatings.id));
+}
+
+/** Latest fluency rating per instrument, for the hub page. */
+export async function getLatestFluency() {
+  const rows = await db()
+    .select({
+      instrumentId: schema.fluencyRatings.instrumentId,
+      rating: schema.fluencyRatings.rating,
+      ratedOn: schema.fluencyRatings.ratedOn,
+    })
+    .from(schema.fluencyRatings)
+    .orderBy(asc(schema.fluencyRatings.ratedOn), asc(schema.fluencyRatings.id));
+
+  // Ascending order means the last write per instrument wins, i.e. the latest.
+  const latest = new Map<number, { rating: number; ratedOn: string }>();
+  for (const row of rows) {
+    latest.set(row.instrumentId, { rating: row.rating, ratedOn: row.ratedOn });
+  }
+  return latest;
+}
+
+export async function getProductionProjects() {
+  return db()
+    .select()
+    .from(schema.productionProjects)
+    .orderBy(desc(schema.productionProjects.id));
+}
+
+/** Minutes logged against a tree's domain, for the "time invested" line. */
+export async function getInstrumentMinutes(instrumentId: number) {
+  const [row] = await db()
+    .select({ minutes: sql<number>`coalesce(sum(${schema.sessionSegments.minutes}), 0)::int` })
+    .from(schema.sessionSegments)
+    .where(eq(schema.sessionSegments.instrumentId, instrumentId));
+  return row?.minutes ?? 0;
+}
+
+export async function getDomainMinutes(domain: (typeof schema.domainEnum.enumValues)[number]) {
+  const [row] = await db()
+    .select({ minutes: sql<number>`coalesce(sum(${schema.sessionSegments.minutes}), 0)::int` })
+    .from(schema.sessionSegments)
+    .where(eq(schema.sessionSegments.domain, domain));
+  return row?.minutes ?? 0;
+}
