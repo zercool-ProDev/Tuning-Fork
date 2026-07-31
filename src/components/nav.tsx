@@ -5,10 +5,16 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/components/ui";
 
+/**
+ * Five items is about the ceiling for a thumb-reachable bottom bar. Stages 6-9
+ * add more sections, so those will need a hub or an overflow rather than
+ * another entry here.
+ */
 const LINKS = [
   { href: "/", label: "Today" },
   { href: "/skills", label: "Skills" },
-  { href: "/sessions", label: "Sessions" },
+  { href: "/drills", label: "Drills" },
+  { href: "/sessions", label: "History" },
   { href: "/log", label: "Log", primary: true },
 ];
 
@@ -30,7 +36,7 @@ export function Nav() {
         "sm:sticky sm:top-0 sm:bottom-auto sm:border-t-0 sm:border-b sm:pb-0",
       )}
     >
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 px-4 py-2 sm:py-3">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-1 px-2 py-2 sm:gap-2 sm:px-4 sm:py-3">
         <span className="hidden text-sm font-semibold tracking-tight sm:block">
           Tuning Fork
         </span>
@@ -44,7 +50,7 @@ export function Nav() {
                 href={link.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 text-sm transition sm:flex-none",
+                  "inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-2 text-center text-[13px] leading-tight transition sm:px-4 sm:text-sm sm:flex-none",
                   link.primary
                     ? "bg-accent font-semibold text-accent-ink hover:brightness-110"
                     : active

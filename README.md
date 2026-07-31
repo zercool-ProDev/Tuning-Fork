@@ -148,7 +148,7 @@ in the proxy layer.
 ```
 src/
   app/
-    (app)/             signed-in shell: dashboard, skills, log, sessions
+    (app)/             signed-in shell: dashboard, skills, drills, log, sessions
     actions/sessions   create / update / delete a session
     api/auth/          login, logout
     api/health/        setup and connectivity check
@@ -163,6 +163,8 @@ src/
     skill-tree.tsx     shared by all five trees
     repertoire.tsx     songs learned, per instrument
     fluency.tsx        self-rated fluency over time
+    drill-form.tsx     log a drill run
+    accuracy-trend.tsx accuracy over time, by difficulty
   db/
     index.ts           Drizzle client, driver chosen from the URL
     queries.ts         read helpers and aggregates
@@ -170,6 +172,7 @@ src/
   lib/
     dates.ts           timezone-aware day maths
     streaks.ts         streak, consistency and heatmap grid maths
+    accuracy.ts        drill accuracy and trend maths
     domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
@@ -200,8 +203,9 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1-4 are done: schema and seed content; the design system, session logger,
-journal and session list; the dashboard; and the skill-tree engine covering the
-four instruments and Logic Pro.
+Stages 1-5 are done: schema and seed content; the design system, session logger,
+journal and session list; the dashboard; the skill-tree engine covering the four
+instruments and Logic Pro; and drill logging with accuracy trends for ear
+training and sight reading.
 
-Stage 5 is ear training and sight reading - drill logging and accuracy trends.
+Stage 6 is the theory curriculum, quizzes and the spaced-repetition queue.

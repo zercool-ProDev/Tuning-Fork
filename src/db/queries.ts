@@ -320,3 +320,74 @@ export async function getDomainMinutes(domain: (typeof schema.domainEnum.enumVal
     .where(eq(schema.sessionSegments.domain, domain));
   return row?.minutes ?? 0;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Drills: ear training and sight reading                                     */
+/* -------------------------------------------------------------------------- */
+
+export type DrillType = typeof schema.drillTypes.$inferSelect;
+export type DrillAttempt = typeof schema.drillAttempts.$inferSelect;
+
+export async function getDrillTypes() {
+  return db()
+    .select()
+    .from(schema.drillTypes)
+    .orderBy(asc(schema.drillTypes.sortOrder));
+}
+
+export async function getDrillTypeByKey(key: string) {
+  const [row] = await db()
+    .select()
+    .from(schema.drillTypes)
+    .where(eq(schema.drillTypes.key, key))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Attempts oldest first, so a trend line and the window comparison read forward. */
+export async function getDrillAttempts(drillTypeId: number, limit = 200) {
+  const rows = await db()
+    .select()
+    .from(schema.drillAttempts)
+    .where(eq(schema.drillAttempts.drillTypeId, drillTypeId))
+    .orderBy(desc(schema.drillAttempts.occurredOn), desc(schema.drillAttempts.id))
+    .limit(limit);
+  return rows.reverse();
+}
+
+/**
+ * Per-drill-type totals for the hub, in one query rather than one per type.
+ * Weighted accuracy, matching lib/accuracy so the two never disagree.
+ */
+export async function getDrillSummary() {
+  const rows = await db()
+    .select({
+      drillTypeId: schema.drillAttempts.drillTypeId,
+      attempts: sql<number>`count(*)::int`,
+      totalQuestions: sql<number>`sum(${schema.drillAttempts.questionsTotal})::int`,
+      totalCorrect: sql<number>`sum(${schema.drillAttempts.questionsCorrect})::int`,
+      lastOn: sql<string | null>`max(${schema.drillAttempts.occurredOn})`,
+      bestDifficulty: sql<number>`max(${schema.drillAttempts.difficulty})::int`,
+    })
+    .from(schema.drillAttempts)
+    .groupBy(schema.drillAttempts.drillTypeId);
+
+  return new Map(rows.map((row) => [row.drillTypeId, row]));
+}
+
+/** Recent attempts across every drill type, for the drills hub. */
+export async function getRecentDrillAttempts(limit = 8) {
+  return db()
+    .select({
+      attempt: schema.drillAttempts,
+      drillName: schema.drillTypes.name,
+      drillKey: schema.drillTypes.key,
+    })
+    .from(schema.drillAttempts)
+    .innerJoin(
+      schema.drillTypes,
+      eq(schema.drillTypes.id, schema.drillAttempts.drillTypeId),
+    )
+    .orderBy(desc(schema.drillAttempts.occurredOn), desc(schema.drillAttempts.id))
+    .limit(limit);
+}
