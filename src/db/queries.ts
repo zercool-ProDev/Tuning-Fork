@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { db, schema } from "@/db";
 import { todayIn } from "@/lib/dates";
@@ -709,4 +709,97 @@ export async function getListeningNotes(limit = 30) {
     .leftJoin(schema.genres, eq(schema.genres.id, schema.listeningNotes.genreId))
     .orderBy(desc(schema.listeningNotes.listenedOn), desc(schema.listeningNotes.id))
     .limit(limit);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Planner and roadmap                                                        */
+/* -------------------------------------------------------------------------- */
+
+export async function getPlan(weekStart: string) {
+  const [plan] = await db()
+    .select()
+    .from(schema.practicePlans)
+    .where(eq(schema.practicePlans.weekStart, weekStart))
+    .limit(1);
+
+  if (!plan) return { plan: null, items: [] };
+
+  const items = await db()
+    .select()
+    .from(schema.practicePlanItems)
+    .where(eq(schema.practicePlanItems.planId, plan.id))
+    .orderBy(asc(schema.practicePlanItems.id));
+
+  return { plan, items };
+}
+
+/**
+ * Actual minutes per domain inside a date range, for plan-versus-actual.
+ * Same GROUP BY as everywhere else — the plan compares against the one log.
+ */
+export async function getMinutesByDomainBetween(from: string, to: string) {
+  const rows = await db()
+    .select({
+      domain: schema.sessionSegments.domain,
+      instrumentId: schema.sessionSegments.instrumentId,
+      minutes: sql<number>`coalesce(sum(${schema.sessionSegments.minutes}), 0)::int`,
+    })
+    .from(schema.sessionSegments)
+    .innerJoin(
+      schema.practiceSessions,
+      eq(schema.sessionSegments.sessionId, schema.practiceSessions.id),
+    )
+    .where(
+      and(
+        gte(schema.practiceSessions.occurredOn, from),
+        lte(schema.practiceSessions.occurredOn, to),
+      ),
+    )
+    .groupBy(schema.sessionSegments.domain, schema.sessionSegments.instrumentId);
+
+  return rows;
+}
+
+export async function getRoadmap() {
+  const quarters = await db()
+    .select()
+    .from(schema.roadmapQuarters)
+    .orderBy(asc(schema.roadmapQuarters.quarterIndex));
+
+  const milestones = await db()
+    .select()
+    .from(schema.milestones)
+    .orderBy(asc(schema.milestones.sortOrder), asc(schema.milestones.id));
+
+  return quarters.map((quarter) => ({
+    ...quarter,
+    milestones: milestones.filter((milestone) => milestone.quarterId === quarter.id),
+  }));
+}
+
+/**
+ * The dashboard headline: weighted completion of roadmap milestones.
+ *
+ * Dropped milestones leave the denominator entirely — abandoning a goal should
+ * not permanently cap the number below 100%, and counting it as incomplete
+ * would do exactly that.
+ */
+export async function getGoalProgress() {
+  const [row] = await db()
+    .select({
+      totalWeight: sql<string>`coalesce(sum(${schema.milestones.weight}) filter (where ${schema.milestones.status} <> 'dropped'), 0)`,
+      doneWeight: sql<string>`coalesce(sum(${schema.milestones.weight}) filter (where ${schema.milestones.status} = 'done'), 0)`,
+      total: sql<number>`count(*) filter (where ${schema.milestones.status} <> 'dropped')::int`,
+      done: sql<number>`count(*) filter (where ${schema.milestones.status} = 'done')::int`,
+    })
+    .from(schema.milestones);
+
+  const totalWeight = Number(row?.totalWeight ?? 0);
+  const doneWeight = Number(row?.doneWeight ?? 0);
+
+  return {
+    percent: totalWeight > 0 ? Math.round((doneWeight / totalWeight) * 100) : 0,
+    total: row?.total ?? 0,
+    done: row?.done ?? 0,
+  };
 }

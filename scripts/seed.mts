@@ -58,6 +58,14 @@ const GENRES = [
   { key: "reggae", name: "Reggae", sortOrder: 12 },
 ];
 
+/**
+ * Practice links default to the musictheory.net exercises index rather than a
+ * deep link to a specific exercise. The site blocks automated requests, so the
+ * exact per-exercise slugs could not be verified when this was written, and a
+ * guessed URL that 404s is worse than one extra click. `practiceLabel` names
+ * the exercise to pick; once you are on it, paste its URL into the drill to
+ * deep-link it permanently.
+ */
 const DRILL_TYPES = [
   {
     key: "intervals",
@@ -65,6 +73,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "Identify ascending, descending and harmonic intervals.",
     sortOrder: 1,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Ear Training → Interval",
   },
   {
     key: "triads",
@@ -72,6 +82,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "Major, minor, diminished and augmented triads by ear.",
     sortOrder: 2,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Ear Training → Chord",
   },
   {
     key: "seventh_chords",
@@ -79,6 +91,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "maj7, min7, dom7, half-diminished and diminished 7ths.",
     sortOrder: 3,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Ear Training → Chord (7th chords)",
   },
   {
     key: "progressions",
@@ -86,6 +100,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "Hear and name progressions by scale degree.",
     sortOrder: 4,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Ear Training → Chord Progression",
   },
   {
     key: "rhythm_dictation",
@@ -93,6 +109,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "Transcribe rhythms after one or two hearings.",
     sortOrder: 5,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "no exact match — try Ear Training",
   },
   {
     key: "melodic_dictation",
@@ -100,6 +118,8 @@ const DRILL_TYPES = [
     domain: "ear_training" as const,
     description: "Transcribe short melodic phrases.",
     sortOrder: 6,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Ear Training → Scale",
   },
   {
     key: "notation_reading",
@@ -107,6 +127,8 @@ const DRILL_TYPES = [
     domain: "sight_reading" as const,
     description: "Timed reading of pitched notation at increasing tempo.",
     sortOrder: 7,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Note Identification",
   },
   {
     key: "rhythm_reading",
@@ -114,6 +136,8 @@ const DRILL_TYPES = [
     domain: "sight_reading" as const,
     description: "Read and perform rhythms at sight, no pitch.",
     sortOrder: 8,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "no exact match — try Note Identification",
   },
   {
     key: "chart_reading",
@@ -121,6 +145,8 @@ const DRILL_TYPES = [
     domain: "sight_reading" as const,
     description: "Read chord charts and Nashville numbers in real time.",
     sortOrder: 9,
+    practiceUrl: "https://www.musictheory.net/exercises",
+    practiceLabel: "Keyboard Identification",
   },
 ];
 
@@ -504,6 +530,18 @@ async function main() {
   await db.insert(schema.instruments).values(INSTRUMENTS).onConflictDoNothing();
   await db.insert(schema.genres).values(GENRES).onConflictDoNothing();
   await db.insert(schema.drillTypes).values(DRILL_TYPES).onConflictDoNothing();
+
+  // Backfill the practice links on drill types that already existed before the
+  // column did. COALESCE so a link you have since edited in the app is kept.
+  for (const drill of DRILL_TYPES) {
+    await db
+      .update(schema.drillTypes)
+      .set({
+        practiceUrl: sql`coalesce(${schema.drillTypes.practiceUrl}, ${drill.practiceUrl})`,
+        practiceLabel: sql`coalesce(${schema.drillTypes.practiceLabel}, ${drill.practiceLabel})`,
+      })
+      .where(eq(schema.drillTypes.key, drill.key));
+  }
   console.log(
     `  instruments ${INSTRUMENTS.length}, genres ${GENRES.length}, drill types ${DRILL_TYPES.length}`,
   );

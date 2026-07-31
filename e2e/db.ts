@@ -60,3 +60,22 @@ export async function resetGenres() {
     await pool.query("delete from listening_notes");
   });
 }
+
+/** Clear the weekly plans and every roadmap milestone. */
+export async function resetPlanning() {
+  await withPool(async (pool) => {
+    // practice_plan_items cascade from practice_plans.
+    await pool.query("delete from practice_plans");
+    await pool.query("delete from milestones");
+    await pool.query("delete from practice_sessions");
+  });
+}
+
+/** Put every drill's practice link back to the seeded default. */
+export async function resetPracticeLinks() {
+  await withPool(async (pool) => {
+    await pool.query(
+      "update drill_types set practice_url = 'https://www.musictheory.net/exercises', practice_label = null",
+    );
+  });
+}

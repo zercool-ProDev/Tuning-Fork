@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { deleteDrillAttempt } from "@/app/actions/drills";
 import { AccuracyTrend } from "@/components/accuracy-trend";
 import { DrillForm } from "@/components/drill-form";
+import { PracticeLink } from "@/components/practice-link";
 import { Card, DomainTag, SectionHeading } from "@/components/ui";
 import { getDrillAttempts, getDrillTypeByKey, getToday } from "@/db/queries";
 import { accuracy } from "@/lib/accuracy";
@@ -47,6 +48,12 @@ export default async function DrillPage({
       {drill.description ? (
         <p className="mb-4 text-sm text-ink-muted">{drill.description}</p>
       ) : null}
+
+      <PracticeLink
+        drillId={drill.id}
+        url={drill.practiceUrl}
+        label={drill.practiceLabel}
+      />
 
       <div className="space-y-4">
         <AccuracyTrend attempts={attempts} />

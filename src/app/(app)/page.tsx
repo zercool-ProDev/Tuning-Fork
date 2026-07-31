@@ -20,6 +20,7 @@ import {
   getInstruments,
   getMinutesByDomain,
   getRecentSessions,
+  getGoalProgress,
   getSettings,
 } from "@/db/queries";
 import { addDays, formatMinutes, todayIn } from "@/lib/dates";
@@ -46,13 +47,14 @@ export default async function DashboardPage() {
   // One window covers the heatmap, the week bars and every streak figure.
   const heatmapStart = addDays(today, -(HEATMAP_WEEKS * 7));
 
-  const [daily, byDomain, sessions, instruments, genres, epTracks] = await Promise.all([
+  const [daily, byDomain, sessions, instruments, genres, epTracks, goal] = await Promise.all([
     getDailyMinutes(heatmapStart),
     getMinutesByDomain(addDays(today, -29)),
     getRecentSessions(3),
     getInstruments(),
     getGenres(),
     getEpTracks(),
+    getGoalProgress(),
   ]);
 
   const minutesByDay: Record<string, number> = {};
@@ -91,6 +93,29 @@ export default async function DashboardPage() {
           {settings.currentFocus ?? "No focus set for this week."}
         </p>
       </header>
+
+      <Link href="/practice/roadmap" className="mb-4 block">
+        <Card className="transition hover:border-line-strong">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-xs font-medium tracking-wide text-ink-faint uppercase">
+              Progress to 12-month goal
+            </span>
+            <span className="text-sm tabular-nums text-ink-muted">
+              {goal.total > 0 ? `${goal.done}/${goal.total} milestones` : "no milestones yet"}
+            </span>
+          </div>
+          <div className="mt-1 flex items-baseline gap-3">
+            <span className="text-3xl font-semibold tabular-nums">{goal.percent}%</span>
+            <span className="text-sm text-ink-faint">versatile + EP shipped</span>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-3">
+            <div
+              className="h-full rounded-full bg-positive"
+              style={{ width: `${goal.percent}%` }}
+            />
+          </div>
+        </Card>
+      </Link>
 
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <StatTile value={formatMinutes(minutesByDay[today] ?? 0)} label="today" />

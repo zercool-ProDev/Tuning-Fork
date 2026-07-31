@@ -41,6 +41,11 @@ export default async function globalSetup() {
     await pool.query("delete from repertoire");
     await pool.query("delete from fluency_ratings");
     await pool.query("delete from production_projects");
+    await pool.query("delete from practice_plans");
+    await pool.query("delete from milestones");
+    await pool.query(
+      "update drill_types set practice_url = 'https://www.musictheory.net/exercises'",
+    );
     await pool.query("delete from drill_attempts");
     await pool.query("delete from quiz_attempts");
     await pool.query("delete from srs_items");

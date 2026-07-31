@@ -259,6 +259,13 @@ export const drillTypes = pgTable("drill_types", {
   name: text("name").notNull(),
   domain: domainEnum("domain").notNull(),
   description: text("description"),
+  /**
+   * Where to actually do this drill. Stored as data rather than hardcoded so a
+   * link that rots, or one that points at the wrong exercise, is an edit in the
+   * app rather than a code change and a deploy.
+   */
+  practiceUrl: text("practice_url"),
+  practiceLabel: text("practice_label"),
   sortOrder: integer("sort_order").notNull().default(0),
 });
 

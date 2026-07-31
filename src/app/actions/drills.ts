@@ -70,3 +70,42 @@ export async function deleteDrillAttempt(formData: FormData) {
   await db().delete(schema.drillAttempts).where(eq(schema.drillAttempts.id, id));
   revalidatePath("/drills");
 }
+
+/**
+ * Update where a drill sends you to practice.
+ *
+ * Editable rather than hardcoded because any link will eventually rot or turn
+ * out to point at the wrong exercise, and that should not need a deploy.
+ */
+export async function setDrillPracticeLink(formData: FormData) {
+  const idRaw = formData.get("drillId");
+  const id = typeof idRaw === "string" ? Number.parseInt(idRaw, 10) : Number.NaN;
+  if (!Number.isFinite(id)) return;
+
+  const urlRaw = formData.get("practiceUrl");
+  const labelRaw = formData.get("practiceLabel");
+
+  const trimmed = typeof urlRaw === "string" ? urlRaw.trim() : "";
+  let practiceUrl: string | null = null;
+  if (trimmed !== "") {
+    // Only http(s). A javascript: or data: URL here would become a stored XSS
+    // vector the moment it is rendered as an anchor.
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        practiceUrl = parsed.toString();
+      }
+    } catch {
+      practiceUrl = null;
+    }
+  }
+
+  const label = typeof labelRaw === "string" ? labelRaw.trim() : "";
+
+  await db()
+    .update(schema.drillTypes)
+    .set({ practiceUrl, practiceLabel: label === "" ? null : label })
+    .where(eq(schema.drillTypes.id, id));
+
+  revalidatePath("/drills");
+}

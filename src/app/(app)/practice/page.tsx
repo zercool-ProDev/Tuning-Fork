@@ -10,12 +10,17 @@ import {
   getDrillTypes,
   getInstruments,
   getLatestFluency,
+  getGoalProgress,
+  getMinutesByDomainBetween,
+  getPlan,
+  getSettings,
   getToday,
   getTreeProgressSummary,
 } from "@/db/queries";
 import { accuracy } from "@/lib/accuracy";
 import { releaseProgress, stageAge, type EpStage } from "@/lib/ep";
 import { coverage } from "@/lib/genres";
+import { addDays, todayIn } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +86,24 @@ export default async function PracticePage() {
       getRelease(),
       getGenresWithContext(),
     ]);
+
+  // Weekly plan progress and the roadmap headline, for the two cards below.
+  const settings = await getSettings();
+  const weekday = new Date(`${todayIn(settings.timezone)}T12:00:00Z`).getUTCDay();
+  const weekStart = addDays(
+    todayIn(settings.timezone),
+    weekday === 0 ? -6 : -(weekday - 1),
+  );
+  const [{ items: planItems }, weekActual, goal] = await Promise.all([
+    getPlan(weekStart),
+    getMinutesByDomainBetween(weekStart, addDays(weekStart, 6)),
+    getGoalProgress(),
+  ]);
+  const planTargets = planItems.length;
+  const plannedMinutes = planItems.reduce((sum, item) => sum + item.targetMinutes, 0);
+  const actualMinutes = weekActual.reduce((sum, row) => sum + row.minutes, 0);
+  const planPct =
+    plannedMinutes > 0 ? Math.min(100, Math.round((actualMinutes / plannedMinutes) * 100)) : 0;
 
   const epTracks = release ? await getTracksWithContext(release.id) : [];
   const epStages = epTracks.map((track) => track.stage as EpStage);
@@ -185,6 +208,30 @@ export default async function PracticePage() {
           urgent={dueConcepts > 0}
           pct={curriculum.length > 0 ? (conceptsStarted / curriculum.length) * 100 : 0}
           detail={`${conceptsStarted}/${curriculum.length} concepts started`}
+        />
+
+        <AreaCard
+          href="/practice/planner"
+          name="Weekly Plan"
+          stat={planTargets > 0 ? `${planPct}%` : "—"}
+          pct={planPct}
+          detail={
+            planTargets > 0
+              ? `${planTargets} ${planTargets === 1 ? "target" : "targets"} this week`
+              : "No plan set for this week"
+          }
+        />
+
+        <AreaCard
+          href="/practice/roadmap"
+          name="Roadmap"
+          stat={`${goal.percent}%`}
+          pct={goal.percent}
+          detail={
+            goal.total > 0
+              ? `${goal.done}/${goal.total} milestones`
+              : "No milestones yet"
+          }
         />
       </div>
     </>

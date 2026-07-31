@@ -210,15 +210,20 @@ running against a local Postgres possible.
 
 ## Status
 
-Stages 1-7 are done: schema and seed content; the design system, session logger,
-journal and session list; the dashboard; the skill-tree engine covering the four
-instruments and Logic Pro; drill logging with accuracy trends; the theory
-curriculum with quizzes and a spaced-repetition queue; the EP command centre;
-and the genre versatility map.
+All nine stages of the build order are done: schema and seed content; the design
+system, logger, journal and session list; the dashboard; the skill-tree engine;
+drills and accuracy trends; theory, quizzes and spaced repetition; the EP
+command centre; the genre map; and the weekly planner, roadmap and goal metric.
 
-Stage 9 is the practice planner and yearly roadmap, which completes the
-dashboard's overall progress metric.
+### Drill practice links
 
-Navigation is four items: Today, Practice, History and Log. Practice is a hub
-for every training area, because a thumb-reachable bottom bar tops out around
-five and the remaining stages add more areas than that.
+Ear training and sight-reading drills carry a `practice_url`, defaulting to the
+musictheory.net exercises index, with `practice_label` naming which exercise to
+pick. The app deliberately does not generate exercises — that was the "log now,
+engine later" call — so the loop is drill there, log here.
+
+The default is the index rather than a deep link because musictheory.net blocks
+automated requests, so the per-exercise slugs could not be verified. A guessed
+URL that 404s is worse than one extra click. Both fields are editable per drill,
+so pasting the real exercise URL takes seconds and needs no deploy.
+
