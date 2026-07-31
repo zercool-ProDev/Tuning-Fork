@@ -90,6 +90,7 @@ npm run dev
 | `npm run db:migrate`    | Apply pending migrations                       |
 | `npm run db:seed`       | Load/refresh reference content (idempotent)    |
 | `npm run db:studio`     | Browse the database                            |
+| `npm run e2e`           | Playwright end-to-end tests                    |
 
 ## Data model
 
@@ -147,23 +148,52 @@ in the proxy layer.
 ```
 src/
   app/
-    api/auth/login/    passcode → session cookie
-    api/auth/logout/   clears the cookie
-    api/health/        proves Postgres read + write
+    (app)/             signed-in shell: today, log, sessions
+    actions/sessions   create / update / delete a session
+    api/auth/          login, logout
+    api/health/        setup and connectivity check
     login/             passcode form
-    page.tsx           placeholder home
+  components/
+    ui.tsx             buttons, fields, cards, domain tag
+    nav.tsx            bottom bar on mobile, top bar on desktop
+    session-form.tsx   the logger, shared by new and edit
+    session-card.tsx   one sitting, with its domain split
   db/
-    index.ts           Drizzle client over Neon HTTP
+    index.ts           Drizzle client, driver chosen from the URL
+    queries.ts         read helpers and aggregates
     schema.ts          table definitions
   lib/
+    dates.ts           timezone-aware day maths
+    domains.ts         domain labels and colours
     env.ts             validated env access
     passcode.ts        constant-time passcode compare (Node only)
     session.ts         JWT sign + verify (edge safe)
   proxy.ts             route gating
+e2e/                   Playwright end-to-end tests
 drizzle/               generated migrations
 ```
 
+## Testing
+
+`npm run e2e` drives a real browser through sign-in, logging a multi-domain
+session, editing it and deleting it. That path is worth covering end to end
+because the server actions — form encoding, segment index parsing, the delete
+cascade — only really run when a browser submits the form.
+
+It expects a server already running on `:3000` against a database you are happy
+to write to; the tests create and delete real rows.
+
+```bash
+npm run build && npm run start   # .env.local pointing at a test database
+npm run e2e
+```
+
+`src/db/index.ts` picks its driver from the connection string — Neon's HTTP
+driver for Neon hosts, node-postgres for anything else — which is what makes
+running against a local Postgres possible.
+
 ## Status
 
-Foundation only. The schema currently holds a single `app_meta` table used by
-the health check — the feature tables are designed once the spec is agreed.
+Stages 1 and 2 are done: schema and seed content, then the design system,
+session logger, journal and session list. Stage 3 is the dashboard proper —
+heatmap, richer streaks and this week's focus.

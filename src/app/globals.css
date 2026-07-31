@@ -1,9 +1,83 @@
 @import "tailwindcss";
 
-@theme inline {
+/**
+ * Design tokens.
+ *
+ * Dark only, deliberately. The app is used in practice rooms and at night, and
+ * maintaining a second theme costs more than it gives for a single-user tool.
+ *
+ * The palette is near-neutral with one accent. Domains get their own hues, but
+ * those are used as small marks — a dot, a bar segment, a border — never as
+ * fills behind text. That keeps six-plus colours on screen from reading as
+ * decoration and preserves the data density of a DAW rather than the confetti
+ * of a habit app.
+ */
+@theme {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Surfaces, darkest to lightest. */
+  --color-surface-0: oklch(0.16 0.006 265);
+  --color-surface-1: oklch(0.20 0.007 265);
+  --color-surface-2: oklch(0.24 0.008 265);
+  --color-surface-3: oklch(0.29 0.009 265);
+
+  --color-line: oklch(0.32 0.009 265);
+  --color-line-strong: oklch(0.42 0.011 265);
+
+  /* Text. `muted` must stay >= 4.5:1 on surface-0; it labels real data. */
+  --color-ink: oklch(0.97 0.002 265);
+  --color-ink-muted: oklch(0.75 0.008 265);
+  --color-ink-faint: oklch(0.60 0.008 265);
+
+  --color-accent: oklch(0.78 0.14 85);
+  --color-accent-ink: oklch(0.22 0.03 85);
+
+  --color-positive: oklch(0.76 0.15 155);
+  --color-danger: oklch(0.70 0.17 25);
+
+  /* One hue per practice domain. */
+  --color-domain-ear: oklch(0.72 0.13 250);
+  --color-domain-sight: oklch(0.74 0.12 195);
+  --color-domain-theory: oklch(0.74 0.13 300);
+  --color-domain-logic: oklch(0.74 0.13 340);
+  --color-domain-instrument: oklch(0.78 0.14 85);
+  --color-domain-genre: oklch(0.76 0.14 135);
+  --color-domain-ep: oklch(0.72 0.15 25);
+
+  --radius-card: 0.875rem;
 }
 
-/* The app is dark-only for now. Colours are applied as Tailwind utilities in
-   layout.tsx rather than as a base `body` rule, so the two are not competing. */
+html {
+  color-scheme: dark;
+  /* Respect the iOS safe area so the bottom bar clears the home indicator. */
+  scroll-padding-bottom: env(safe-area-inset-bottom);
+}
+
+body {
+  background: var(--color-surface-0);
+  color: var(--color-ink);
+}
+
+/* Inputs on iOS zoom the viewport below 16px. Never shrink these. */
+input,
+select,
+textarea,
+button {
+  font-size: max(1rem, 16px);
+}
+
+/* Visible focus for keyboard users without a permanent ring on mouse clicks. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
