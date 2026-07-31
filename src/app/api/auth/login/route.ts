@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { authSecret, passcodeHash } from "@/lib/env";
+import { appPasscode, authSecret } from "@/lib/env";
 import { verifyPasscode } from "@/lib/passcode";
 import {
   SESSION_COOKIE,
@@ -8,7 +8,7 @@ import {
   createSessionToken,
 } from "@/lib/session";
 
-// scrypt comes from node:crypto, so this route cannot run on the edge runtime.
+// node:crypto is used for the constant-time compare, so this stays on Node.
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
@@ -23,8 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Passcode is required." }, { status: 400 });
   }
 
-  // scrypt takes ~100ms, which is itself a meaningful brake on brute forcing.
-  if (!(await verifyPasscode(passcode, passcodeHash()))) {
+  if (!verifyPasscode(passcode, appPasscode())) {
     return NextResponse.json({ error: "Incorrect passcode." }, { status: 401 });
   }
 

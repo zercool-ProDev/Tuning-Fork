@@ -24,7 +24,7 @@ function envStatus() {
   return {
     DATABASE_URL: Boolean(process.env.DATABASE_URL),
     AUTH_SECRET: Boolean(process.env.AUTH_SECRET),
-    PASSCODE_HASH: Boolean(process.env.PASSCODE_HASH),
+    APP_PASSCODE: Boolean(process.env.APP_PASSCODE),
   };
 }
 

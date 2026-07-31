@@ -25,5 +25,5 @@ export const databaseUrl = () => required("DATABASE_URL");
 /** Secret used to sign the session cookie. Rotating this logs every device out. */
 export const authSecret = () => required("AUTH_SECRET");
 
-/** scrypt hash of the login passcode, produced by `npm run hash-passcode`. */
-export const passcodeHash = () => required("PASSCODE_HASH");
+/** The login passcode. Stored in plain text; see lib/passcode.ts for why. */
+export const appPasscode = () => required("APP_PASSCODE");

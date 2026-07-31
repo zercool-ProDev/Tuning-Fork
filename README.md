@@ -33,18 +33,23 @@ See `.env.example`. Three are required:
 | --------------- | ------------------------------------------------------ |
 | `DATABASE_URL`  | Injected automatically by the Neon/Vercel integration   |
 | `AUTH_SECRET`   | Random string; signs the session cookie                 |
-| `PASSCODE_HASH` | scrypt hash of your login passcode                      |
+| `APP_PASSCODE`  | Your login passcode, in plain text                      |
 
-Generate the last two:
+Generate `AUTH_SECRET`:
 
 ```bash
-npm run --silent hash-passcode -- "your passcode here"
+npm run --silent gen-secret
 ```
 
 The `--silent` matters — without it npm prints its own banner into the output.
-The passcode itself is never stored; only the scrypt hash is.
+`APP_PASSCODE` needs no generator: it is simply whatever passcode you choose.
 
-Changing `AUTH_SECRET` signs every device out. Changing `PASSCODE_HASH` changes
+It is stored unhashed on purpose. For a single-user personal app, the Vercel
+account that can read the variable is already what guards the deployment, so
+hashing would defend against a threat that does not really exist here while
+costing a setup step that requires a terminal. See `src/lib/passcode.ts`.
+
+Changing `AUTH_SECRET` signs every device out. Changing `APP_PASSCODE` changes
 the passcode.
 
 ## Setting up the database
@@ -54,8 +59,8 @@ the passcode.
 2. Connect it to the project when prompted, for all three environments
    (Production, Preview, Development). Vercel then sets `DATABASE_URL` on every
    deployment automatically — there is no secret to copy by hand.
-3. Add `AUTH_SECRET` and `PASSCODE_HASH` under **Settings → Environment
-   Variables**, for all three environments.
+3. Add `AUTH_SECRET` and `APP_PASSCODE` under **Settings → Environments**,
+   for all three environments.
 4. Pull everything down for local work: `vercel env pull .env.local`
 5. Apply migrations: `npm run db:migrate`
 6. Visit `/api/health`. A healthy response looks like:
@@ -80,7 +85,7 @@ npm run dev
 | `npm run dev`           | Development server                             |
 | `npm run build`         | Production build                               |
 | `npm run lint`          | ESLint                                         |
-| `npm run hash-passcode` | Generate `PASSCODE_HASH` and `AUTH_SECRET`     |
+| `npm run gen-secret`    | Generate `AUTH_SECRET`                         |
 | `npm run db:generate`   | Generate a migration from schema changes       |
 | `npm run db:migrate`    | Apply pending migrations                       |
 | `npm run db:seed`       | Load/refresh reference content (idempotent)    |
@@ -128,12 +133,12 @@ public. New routes are therefore protected the moment they are created, rather
 than the moment someone remembers to guard them.
 
 Submitting the passcode hits `POST /api/auth/login`, which verifies it against
-`PASSCODE_HASH` using scrypt (constant-time comparison) and sets a signed
+`APP_PASSCODE` (constant-time comparison) and sets a signed
 HTTP-only JWT cookie lasting 90 days. Because the session lives in a cookie and
 all data lives in Postgres, signing in on a second device shows exactly the same
 state.
 
-scrypt runs in Node, so the login route pins `runtime = "nodejs"`. Cookie
+The compare runs in Node, so the login route pins `runtime = "nodejs"`. Cookie
 verification uses `jose`, which works on the edge runtime, so route gating stays
 in the proxy layer.
 
@@ -152,7 +157,7 @@ src/
     schema.ts          table definitions
   lib/
     env.ts             validated env access
-    passcode.ts        scrypt hash + verify (Node only)
+    passcode.ts        constant-time passcode compare (Node only)
     session.ts         JWT sign + verify (edge safe)
   proxy.ts             route gating
 drizzle/               generated migrations

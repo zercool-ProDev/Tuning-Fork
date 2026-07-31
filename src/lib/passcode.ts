@@ -1,48 +1,24 @@
 import "server-only";
 
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-
-const scryptAsync = promisify(scrypt) as (
-  password: string,
-  salt: Buffer,
-  keylen: number,
-) => Promise<Buffer>;
-
-const KEY_LENGTH = 64;
+import { createHash, timingSafeEqual } from "node:crypto";
 
 /**
- * Hash a passcode for storage in the PASSCODE_HASH environment variable.
- * Format is `scrypt:<salt-hex>:<key-hex>`.
+ * Compare a submitted passcode against the configured one.
  *
- * scrypt is deliberately slow and memory-hard, so even a short passcode is
- * expensive to attack offline if the hash ever leaks.
+ * The passcode is stored as plaintext in the APP_PASSCODE environment variable.
+ * That is a deliberate trade for a single-user personal app: the Vercel account
+ * that can read the variable is already the thing guarding the deployment, so
+ * hashing would protect against a threat that does not really exist here, while
+ * costing a setup step that has to happen on a machine with a terminal.
  *
- * Node-only: this must never run in middleware or on the edge runtime.
+ * Both sides are hashed to a fixed-width digest before comparison for two
+ * reasons: timingSafeEqual requires equal-length buffers, and hashing first
+ * means the comparison time reveals nothing about the passcode's length.
  */
-export async function hashPasscode(passcode: string): Promise<string> {
-  const salt = randomBytes(16);
-  const key = await scryptAsync(passcode, salt, KEY_LENGTH);
-  return `scrypt:${salt.toString("hex")}:${key.toString("hex")}`;
-}
+export function verifyPasscode(submitted: string, configured: string): boolean {
+  if (configured.length === 0) return false;
 
-/** Constant-time check of a submitted passcode against a stored hash. */
-export async function verifyPasscode(
-  passcode: string,
-  stored: string,
-): Promise<boolean> {
-  // Colon-separated, not `$`: dotenv-style loaders expand `$name` inside
-  // .env files, which would silently mangle the stored hash.
-  const [scheme, saltHex, keyHex] = stored.split(":");
-  if (scheme !== "scrypt" || !saltHex || !keyHex) return false;
-
-  const expected = Buffer.from(keyHex, "hex");
-  if (expected.length !== KEY_LENGTH) return false;
-
-  const actual = await scryptAsync(
-    passcode,
-    Buffer.from(saltHex, "hex"),
-    KEY_LENGTH,
-  );
-  return timingSafeEqual(actual, expected);
+  const a = createHash("sha256").update(submitted, "utf8").digest();
+  const b = createHash("sha256").update(configured, "utf8").digest();
+  return timingSafeEqual(a, b);
 }
