@@ -497,7 +497,8 @@ async function main() {
 
   await db
     .insert(schema.settings)
-    .values({ id: 1, timezone: "UTC", weeklyMinutesTarget: 420 })
+    // CDT/CST. IANA zone, not the abbreviation, so daylight saving is handled.
+    .values({ id: 1, timezone: "America/Chicago", weeklyMinutesTarget: 420 })
     .onConflictDoNothing();
 
   await db.insert(schema.instruments).values(INSTRUMENTS).onConflictDoNothing();
