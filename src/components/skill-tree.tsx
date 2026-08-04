@@ -1,6 +1,7 @@
 import { setSkillStatus } from "@/app/actions/skills";
 import { Card, SectionHeading, cn } from "@/components/ui";
 import type { SkillNodeWithProgress } from "@/db/queries";
+import { nextSkill, tierLabel } from "@/lib/tiers";
 
 /**
  * The shared skill tree. One component renders all four instrument trees and
@@ -41,17 +42,23 @@ function TierGroup({
   redirectTo: string;
 }) {
   const done = nodes.filter((node) => node.status === "done").length;
+  const label = tierLabel(tier);
+  const complete = done === nodes.length;
 
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-xs font-medium tracking-wide text-ink-faint uppercase">
-          Tier {tier}
+          {label.name}
+          {complete ? <span className="ml-2 text-positive">cleared</span> : null}
         </h3>
         <span className="text-xs tabular-nums text-ink-faint">
           {done}/{nodes.length}
         </span>
       </div>
+      {label.blurb ? (
+        <p className="-mt-1 text-xs text-ink-faint">{label.blurb}</p>
+      ) : null}
 
       <ul className="space-y-2">
         {nodes.map((node) => (
@@ -115,6 +122,7 @@ export function SkillTree({
   const done = nodes.filter((node) => node.status === "done").length;
   const inProgress = nodes.filter((node) => node.status === "in_progress").length;
   const pct = nodes.length > 0 ? Math.round((done / nodes.length) * 100) : 0;
+  const next = nextSkill(nodes);
 
   return (
     <Card className="space-y-5">
@@ -136,6 +144,23 @@ export function SkillTree({
         <p className="mt-2 text-xs text-ink-faint">
           Tap a skill to move it on: not started → working on it → done.
         </p>
+
+        {next ? (
+          <p className="mt-3 rounded-xl border border-line bg-surface-2 p-3 text-sm">
+            <span className="text-ink-faint">Next up · {tierLabel(next.tier).name}</span>
+            <br />
+            <span className="font-medium">{next.title}</span>
+          </p>
+        ) : (
+          <p className="mt-3 rounded-xl border border-positive/40 bg-surface-2 p-3 text-sm">
+            <span className="font-medium text-positive">Every tier cleared.</span>{" "}
+            <span className="text-ink-muted">
+              Nothing left to tick here — the honest next step is repertoire that
+              demands these skills, and rating your fluency again to see whether it
+              has actually moved.
+            </span>
+          </p>
+        )}
       </div>
 
       {tiers.map((tier) => (

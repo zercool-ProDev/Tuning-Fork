@@ -58,9 +58,10 @@ test("skill status cycles and persists", async ({ page }) => {
     /— Done/,
   );
 
-  // And the hub's counter reflects it.
+  // And the hub's counter reflects it. Matched loosely on purpose: pinning the
+  // node count would break this test every time the tree gains content.
   await page.goto("/skills");
-  await expect(page.getByText("1/8 skills", { exact: false })).toBeVisible();
+  await expect(page.getByText(/1\/\d+ skills/)).toBeVisible();
 
   // Cycle back to not started so the suite leaves no residue.
   await page.goto("/skills/drums");
@@ -127,4 +128,39 @@ test("logic projects can be added and linked to an EP track", async ({ page }) =
 
   await page.getByRole("button", { name: /Remove Verse beat sketch/ }).click();
   await expect(page.getByText("Verse beat sketch")).toHaveCount(0);
+});
+
+test("tiers are named and the tree suggests what is next", async ({ page }) => {
+  await page.goto("/skills/drums");
+
+  // Named stages rather than "Tier 3", which says nothing about level.
+  for (const name of ["Foundations", "Developing", "Fluent", "Advanced", "Professional", "Mastery"]) {
+    await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+  }
+
+  // The nudge points at the lowest unfinished tier.
+  await expect(page.getByText(/Next up · Foundations/)).toBeVisible();
+
+  // Once something is in progress it is preferred over starting another thing.
+  await page.getByRole("button", { name: /Basic Rock Beat/ }).click();
+  await expect(page.getByText("Basic Rock Beat").last()).toBeVisible();
+});
+
+test("a fully cleared tree says something useful instead of sitting at 100%", async ({ page }) => {
+  await page.goto("/skills/drums");
+
+  // Clear every skill by cycling each to done.
+  for (let pass = 0; pass < 2; pass += 1) {
+    const buttons = page.locator('form button[aria-label*="—"]');
+    const count = await buttons.count();
+    for (let i = 0; i < count; i += 1) {
+      const button = page.locator('form button[aria-label*="—"]').nth(i);
+      const label = await button.getAttribute("aria-label");
+      if (label && !label.includes("— Done")) await button.click();
+    }
+  }
+
+  await expect(page.getByText("Every tier cleared.")).toBeVisible();
+  await expect(page.getByText(/repertoire that demands these skills/)).toBeVisible();
+  await expect(page.getByText(/Next up/)).toHaveCount(0);
 });

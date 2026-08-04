@@ -122,9 +122,9 @@ Two deliberate choices worth knowing:
 ### Seed content
 
 `npm run db:seed` loads 4 instruments, 12 genres, 9 drill types, a 19-concept
-theory curriculum with prerequisites, 22 starter quiz questions, 44 skill-tree
-nodes (four instrument trees plus Logic Pro), an EP shell with 5 tracks, and 4
-roadmap quarters. It is idempotent and conflicts on natural keys, so it never
+theory curriculum with prerequisites, 22 starter quiz questions, 81 skill-tree
+nodes across six named tiers (four instrument trees plus Logic Pro), an EP
+shell with 5 tracks, and 4 roadmap quarters. It is idempotent and conflicts on natural keys, so it never
 clobbers edits made in the app and can be re-run as new seed content lands.
 
 ## How auth works
@@ -161,7 +161,7 @@ src/
     nav.tsx            bottom bar on mobile, top bar on desktop
     session-form.tsx   the logger, shared by new and edit
     session-card.tsx   one sitting, with its domain split
-    skill-tree.tsx     shared by all five trees
+    skill-tree.tsx     shared by all five trees, six named tiers
     repertoire.tsx     songs learned, per instrument
     fluency.tsx        self-rated fluency over time
     drill-form.tsx     log a drill run
